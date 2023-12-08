@@ -7,24 +7,10 @@ from bs4 import BeautifulSoup
 import re
 import os
 from datetime import date
-
-# TODO: make sure that the returned games are explicitly what the user would look for. 'forza' will return non-forza games from most sites--
-# maybe use regex to make sure an intended game is returned?
+import tkinter as tk
 
 
-# HEADLESS OPERATION: 
-# options = webdriver.ChromeOptions()
-# options.add_argument("--headless=new")
-# browser = webdriver.Chrome(options=options)
-
-# TODO: work in progress- append to a file with collected values
-def fileSetup():
-    today = date.today()
-    with open(os.path.join(os.getcwd(), 'data.txt'), 'a') as file:
-        file.write(today)
-
-
-def checkSteam(gameEntry): # -- WORKS!
+def checkSteam(gameEntry): 
     # browser.get('https://store.steampowered.com')
     # # the name attribute of the search box is "term"
     # browser.find_element(By.NAME, "term").send_keys(gameEntry, Keys.ENTER)
@@ -36,6 +22,18 @@ def checkSteam(gameEntry): # -- WORKS!
 
     soup = BeautifulSoup(response.content, "html.parser")
     first_result = soup.find(class_="search_result_row")
+    
+    # search for "0 results match your search" element on webpage. If the element is visible and matches that text, end the Steam game search here.
+    # otherwise, continue the scraping process
+    try: 
+        noResult = soup.find(class_="search_results_count")
+        noResultMsg = noResult.get_text(strip=True)
+        if noResultMsg == "0 results match your search.":
+            print("NO MATCHES")
+            return "No results found", "Please try again"
+    except:
+        pass
+
 
     if first_result:
         resultTitle = first_result.find(class_="title")
@@ -46,14 +44,15 @@ def checkSteam(gameEntry): # -- WORKS!
             if resultPrice:
                 price = resultPrice.get_text(strip=True)
                 print(f"Price: {price}")
-            # game has no price, likely because was announced but is not available for preorder
+                return title, price
+            # game has no price, likely because was announced but is not available for preorder yet
             else:
                 print("Price: NOT AVAILABLE")
     else:
         print("No search results found! ")
 
 
-def checkGMG(gameEntry): # 12/7/23 seems to work. able to handle both 0 results and if complete garbage results are returned
+def checkGMG(gameEntry):
     print("\n----- Green Man Gaming -----")
     gameEntry.replace(" ", "%20")
     url = (f"https://www.greenmangaming.com/search?query={gameEntry}&platform=PC")
@@ -74,57 +73,28 @@ def checkGMG(gameEntry): # 12/7/23 seems to work. able to handle both 0 results 
     resultTitle = soup.find('p', class_="prod-name")
     resultPrice = soup.find('span', class_="current-price")
 
-    # resultTitleList = resultTitle.split()
-
     if resultTitle:
         title = resultTitle.get_text(strip=True)
         # Use '0' games found to notify of no search results
         if notFound == '0':
             print("No games found -- zero results returned")
+            return "No results found", "Game may be unavailable on this platform"
         # avoids search results that are returned that are irrelevant, like 'forza'
         # another example: 'shit a'
+        # TODO: unintended side-effect: if user looks up 'grand theft auto 5', 'grand theft auto v' does not appear. Exclude roman numerals?
         elif gameEntry.lower() not in title.lower():
             print("Not found -- discarded erroneous results")
+            return "Not found", "No exact matches found"
         else:
             print(f"Title: {title}")
             if resultPrice:
                 price = resultPrice.get_text(strip=True)
                 print(f"Price: {price}")
+                return title, price
             else:
                 print("No results found.")
 
-
-    # # Doesnt totally work
-    # if resultNotFound:
-    #     print("RESULTS NOT FOUND")
-
-    # elif resultTitle:
-    #     title = resultTitle.get_text(strip=True)
-    #     print(f"Title: {title}")
-    #     if resultPrice:
-    #         price = resultPrice.get_text(strip=True)
-    #         print(f"Price: {price}")
-    #     else:
-    #         print("No results found!")
-            
-    # PREVIOUS CODE
-    # while True:
-    #     # avoid recommended games showing false positive
-    #     if notFound == '0':
-    #         print("No games found!")
-    #         return False
-    #     elif resultTitle:
-    #         title = resultTitle.get_text(strip=True)
-    #         print(f"Title: {title}")
-    #         if resultPrice:
-    #             price = resultPrice.get_text(strip=True)
-    #             print(f"Price: {price}")
-    #             break
-    #     else:
-    #         print("No results found!")
-    #         break
-
-
+# NOT WORKING AND CURRENTLY NOT IMPLEMENTED
 def checkG2A(gameEntry):
     print("----- G2A -----")
 
@@ -152,6 +122,7 @@ def checkG2A(gameEntry):
         print("No search results found!")
 
 
+# TODO: Works in CLI mode, need to update with GUI functionality
 def checkHumbleBundle(gameEntry):
 
     # TODO: modify to make headless
@@ -187,7 +158,7 @@ def checkHumbleBundle(gameEntry):
     else:
         print("No results found!")
 
-
+# TODO: Made largely redundant with checkEpicAccurate() function. will likely be phased out.
 def checkEpic(gameEntry):
     print("----- Epic Games Store -----")
     gameEntry.replace(" ", "%20")
@@ -217,19 +188,27 @@ def checkEpic(gameEntry):
             if resultPrice:
                 price = resultPrice.get_text(strip=True)
                 print(f"Price: {price}")
+                return title, price
+            else:
+                # no price info. game might be announed but not yet released
+                price = "Price coming soon"
+                return title, price
     else:
         print("No results found!")
+        title = "No results found"
+        price = "Game might not be available on this store."
+        return title, price
 
+
+# TODO: handle roman numerals if present. 
 def checkEpicAccurate(gameEntry):
     print("----- Epic Games Store ACCURATE -----")
     gameEntry.replace(" ", "%20")
     url = (f"https://store.epicgames.com/en-US/browse?q={gameEntry}&sortBy=relevancy&sortDir=DESC&count=40")
 
-    # Split user-entered title into split strings
+    # Split user-entered title into split strings - UNIMPLEMENTED..possibly use to convert into roman numerals?
     titleWords = gameEntry.lower().split()
     excludedWords = ['the', 'of']
-
-    
 
     
     browser = webdriver.Chrome()
@@ -247,70 +226,107 @@ def checkEpicAccurate(gameEntry):
     # use "No results found" text from webpage, avoiding erroneously grabbing other displayed games.
     if noResults:
         print("No results found! (avoided grabbing other recommended games)")
-        if results:
-            # div container that holds the game title
-            resultTitle = results.find('div', class_="css-rgqwpc")
-            # span tag that holds the game price. If this was used without the results variable, other css-formatted text would be grabbed
-            resultPrice = results.find('span', class_="css-119zqif")
-            if resultTitle:
-                title = resultTitle.get_text(strip=True)
-                # Any special characters will be replaced with a blank string
-                title = re.sub(r'[^a-zA-Z0-9\s]', '', title)
-                titleSplit = title.lower().split()
-                if gameEntry.lower() == title.lower():
-                    print(f"Title: {title}")
-                    if resultPrice:
-                        price = resultPrice.get_text(strip=True)
-                        print(f"Price: {price}")
+        return "No results found", "Game may be unavailable on this platform"
+    if results:
+        # div container that holds the game title
+        resultTitle = results.find('div', class_="css-rgqwpc")
+        # span tag that holds the game price. If this was used without the results variable, other css-formatted text would be grabbed
+        resultPrice = results.find('span', class_="css-119zqif")
+        if resultTitle:
+            title = resultTitle.get_text(strip=True)
+            # Any special characters will be replaced with a blank string
+            title = re.sub(r'[^a-zA-Z0-9\s]', '', title)
+            titleSplit = title.lower().split()
+            if gameEntry.lower() == title.lower():
+                print(f"Title: {title}")
+                if resultPrice:
+                    price = resultPrice.get_text(strip=True)
+                    print(f"Price: {price}")
+                    return title, price
 
-                else:
-                    ("Exact match not found!")
-                
-        else:
-            print("No results found!")
+            else:
+                ("Exact match not found!")
+                # change this returned value, but what exactly would trigger this condition?
+                return "n/a", "n/a"
+            
+    else:
+        print("No results found!")
+
+# calls check function and returns the values to the GUI function
+def processGame(gameEntry):
+    steamTitle, steamPrice = checkSteam(gameEntry)
+    gmgTitle, gmgPrice = checkGMG(gameEntry)
+    epicTitle, epicPrice = checkEpicAccurate(gameEntry)
+    return steamTitle, steamPrice, gmgTitle, gmgPrice, epicTitle, epicPrice
+
+
+# create the tkinter GUI
+def createGui():
+    root = tk.Tk()
+    root.title("PC Game Price Checker")
+
+    # nested function to grab user entry from GUI and send to processGame function
+    def triggerProcessGame():
+        # grab user entry
+        gameEntry = entry.get()
+        # 
+        steamTitle, steamPrice, gmgTitle, gmgPrice, epicTitle, epicPrice = processGame(gameEntry)
         
-   
-gameEntry = input("Enter a PC game you'd like to check the price for: ")
+        # Update the labels when the values are returned from each function
+        steamLabel.config(text=f"Steam: {steamTitle} -- {steamPrice}")
+        gmgLabel.config(text=f"Green Man Gaming: {gmgTitle} -- {gmgPrice}")
+        epicLable.config(text=f"Epic Games Store: {epicTitle} -- {epicPrice}")
 
-fileSetup()
+
+    label = tk.Label(root, text="Enter a PC game you'd like to check the price for: ")
+    label.pack()
+
+    entry = tk.Entry(root)
+    entry.pack()
+
+    button = tk.Button(root, text="Check Price", command=triggerProcessGame)
+    button.pack()
+
+    steamLabel = tk.Label(root, text="Steam: ")
+    steamLabel.pack()
+
+    gmgLabel = tk.Label(root, text="Green Man Gaming: ")
+    gmgLabel.pack()
+
+    epicLable = tk.Label(root, text="Epic Games: ")
+    epicLable.pack()
+
+    root.mainloop()
+
+
+# beginnin of program. starts gui window        
+if __name__ == '__main__':
+    createGui()
+
+
+# USED ONLY for command line version of program.
+# gameEntry = input("Enter a PC game you'd like to check the price for: ")
 # checkSteam(gameEntry)
-checkGMG(gameEntry)
+# checkGMG(gameEntry)
 # checkHumbleBundle(gameEntry)
 # checkEpic(gameEntry)
 # checkEpicAccurate(gameEntry)
 # checkG2A(gameEntry)
 
+# TODO: After the search is complete, make buttons appear for each game found that links to the 'search' page they were found on (just return url variable)
 
 # TODO: Functionality to split user entered string into separate strings in order to capture every word in game title.
-#   From here, see if a word within the string is present in the title to ensure greater accuracy. Exclude common words like
-#   'the' and 'of'. If it has a number, make sure the number is in the title. Include roman numerals ????
+# From here, see if a word within the string is present in the title to ensure greater accuracy. Exclude common words like
+# 'the' and 'of'. If it has a number, make sure the number is in the title. Include roman numerals ???? 
 
 # TODO: brute force link that lets a user manually enter a url and grab the price?
 
-# TODO: track historic price data in a shelve
+# TODO: track historic price data in a shelve ??
 
 # TODO: Since Steam is the most popular store platform, only allow games that match the Steam name??
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# HEADLESS UNIT TEST OPERATION: 
+# HEADLESS UNIT TEST OPERATION -- probably won't work on everything due to JS and anti-webscraping : 
 # https://www.zenrows.com/blog/headless-browser-python#switch-to-python-selenium-headless-mode
 # https://www.selenium.dev/blog/2023/headless-is-going-away/
 # 
