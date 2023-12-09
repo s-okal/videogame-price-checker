@@ -48,6 +48,7 @@ def checkSteam(gameEntry):
             # game has no price, likely because was announced but is not available for preorder yet
             else:
                 print("Price: NOT AVAILABLE")
+                return title, "Price not available"
     else:
         print("No search results found! ")
 
@@ -125,13 +126,9 @@ def checkG2A(gameEntry):
 # TODO: Works in CLI mode, need to update with GUI functionality
 def checkHumbleBundle(gameEntry):
 
-    # TODO: modify to make headless
-    # JS makes it harder to scrape the page. We'll use Selenium and Beautiful Soup here.
-
     print("\n----- Humble Bundle -----")
 
     gameEntry.replace(" ", "%20")
-    print(gameEntry)
     url = (f"https://www.humblebundle.com/store/search?sort=bestselling&search={gameEntry}&page=1&platform=windows")
     # url = "https://www.humblebundle.com/store/search?search=poop"
 
@@ -155,8 +152,10 @@ def checkHumbleBundle(gameEntry):
         if resultPrice:
             price = resultPrice.get_text(strip=True)
             print(f"Price: {price}")
+            return title, price
     else:
         print("No results found!")
+        return "No results found", "Game may be unavailable on this platform"
 
 # TODO: Made largely redundant with checkEpicAccurate() function. will likely be phased out.
 def checkEpic(gameEntry):
@@ -247,7 +246,7 @@ def checkEpicAccurate(gameEntry):
             else:
                 ("Exact match not found!")
                 # change this returned value, but what exactly would trigger this condition?
-                return "n/a", "n/a"
+                return "Game not found", "Couldn't find exact title match"
             
     else:
         print("No results found!")
@@ -256,8 +255,9 @@ def checkEpicAccurate(gameEntry):
 def processGame(gameEntry):
     steamTitle, steamPrice = checkSteam(gameEntry)
     gmgTitle, gmgPrice = checkGMG(gameEntry)
+    hbTitle, hbPrice = checkHumbleBundle(gameEntry)
     epicTitle, epicPrice = checkEpicAccurate(gameEntry)
-    return steamTitle, steamPrice, gmgTitle, gmgPrice, epicTitle, epicPrice
+    return steamTitle, steamPrice, gmgTitle, gmgPrice, hbTitle, hbPrice, epicTitle, epicPrice
 
 
 # create the tkinter GUI
@@ -270,11 +270,12 @@ def createGui():
         # grab user entry
         gameEntry = entry.get()
         # 
-        steamTitle, steamPrice, gmgTitle, gmgPrice, epicTitle, epicPrice = processGame(gameEntry)
+        steamTitle, steamPrice, gmgTitle, gmgPrice, hbTitle, hbPrice, epicTitle, epicPrice = processGame(gameEntry)
         
         # Update the labels when the values are returned from each function
         steamLabel.config(text=f"Steam: {steamTitle} -- {steamPrice}")
         gmgLabel.config(text=f"Green Man Gaming: {gmgTitle} -- {gmgPrice}")
+        hbLabel.config(text=f"Humble Bundle: {hbTitle} -- {hbPrice}")
         epicLable.config(text=f"Epic Games Store: {epicTitle} -- {epicPrice}")
 
 
@@ -287,11 +288,14 @@ def createGui():
     button = tk.Button(root, text="Check Price", command=triggerProcessGame)
     button.pack()
 
-    steamLabel = tk.Label(root, text="Steam: ")
+    steamLabel = tk.Label(root, text="Steam: ", fg="blue")
     steamLabel.pack()
 
-    gmgLabel = tk.Label(root, text="Green Man Gaming: ")
+    gmgLabel = tk.Label(root, text="Green Man Gaming: ", fg="green")
     gmgLabel.pack()
+
+    hbLabel = tk.Label(root, text="Humble Bundle: ", fg="red")
+    hbLabel.pack()
 
     epicLable = tk.Label(root, text="Epic Games: ")
     epicLable.pack()
