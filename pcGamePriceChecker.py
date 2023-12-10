@@ -2,12 +2,14 @@ from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
 import time
+from datetime import date
 import requests
 from bs4 import BeautifulSoup
 import re
 from datetime import date
 import tkinter as tk
 from tkinter import ttk
+import os
 
 # dictionary to be used for storing button links after lookups are completed
 platformButtons = {}
@@ -32,6 +34,8 @@ def checkSteam(gameEntry):
         noResultMsg = noResult.get_text(strip=True)
         if noResultMsg == "0 results match your search.":
             print("NO MATCHES")
+            with open(os.path.join(os.getcwd(), 'videoGamePrices.txt'), 'a') as f:
+                f.write(f"Steam: No results found for '{gameEntry}'\n")
             return "No results found", "Please try again"
     except:
         pass
@@ -48,10 +52,14 @@ def checkSteam(gameEntry):
             if resultPrice:
                 price = resultPrice.get_text(strip=True)
                 print(f"Price: {price}")
+                with open(os.path.join(os.getcwd(), 'videoGamePrices.txt'), 'a') as f:
+                    f.write(f"Steam: {title} -- {price}\n")
                 return title, price
             # game has no price, likely because was announced but is not available for preorder yet
             else:
                 print("Price: NOT AVAILABLE")
+                with open(os.path.join(os.getcwd(), 'videoGamePrices.txt'), 'a') as f:
+                    f.write(f"Steam: {title} -- Price: NOT AVAILABLE (has it been released yet?)\n")
                 return title, "Price not available"
     else:
         print("No search results found! ")
@@ -83,17 +91,23 @@ def checkGMG(gameEntry):
         # Use '0' games found to determine if there are no search results
         if notFound == '0':
             print("No games found -- zero results returned")
+            with open(os.path.join(os.getcwd(), 'videoGamePrices.txt'), 'a') as f:
+                f.write(f"Green Man Gaming: No results found for '{gameEntry}'\n")
             return "No results found", "Game may be unavailable on this platform"
         # avoids search results that are returned that are irrelevant, like 'forza'
         # TODO: unintended side-effect: if user looks up 'grand theft auto 5', 'grand theft auto v' does not appear. Exclude roman numerals?
         elif gameEntry.lower() not in title.lower():
             print("Not found -- discarded erroneous results")
+            with open(os.path.join(os.getcwd(), 'videoGamePrices.txt'), 'a') as f:
+                f.write(f"Green Man Gaming: No results found for '{gameEntry}'\n")
             return "Not results found", "Game may be unavailable on this platform"
         else:
             print(f"Title: {title}")
             if resultPrice:
                 price = resultPrice.get_text(strip=True)
                 print(f"Price: {price}")
+                with open(os.path.join(os.getcwd(), 'videoGamePrices.txt'), 'a') as f:
+                    f.write(f"Green Man Gaming: {title} -- {price}\n")
                 return title, price
             # might not be necessary
             else:
@@ -122,17 +136,24 @@ def checkHumbleBundle(gameEntry):
 
     if resultTitle:
         title = resultTitle.get_text(strip=True)
+        title = re.sub(r'[^a-zA-Z0-9\s]', '', title)
         print(f"Title: {title}")
         # avoids erroneous search results. Ensures searched game is within the title of the matched game
         if gameEntry.lower() not in title.lower():
             print("No results-- exact match not detected")
+            with open(os.path.join(os.getcwd(), 'videoGamePrices.txt'), 'a') as f:
+                f.write(f"Humble Bundle: No results found for '{gameEntry}'\n")
             return "No results found", "Game may be unavailable on this platform"
         elif resultPrice:
             price = resultPrice.get_text(strip=True)
             print(f"Price: {price}")
+            with open(os.path.join(os.getcwd(), 'videoGamePrices.txt'), 'a') as f:
+                f.write(f"Humble Bundle: {title} -- {price}\n")
             return title, price
     else:
         print("No results found!")
+        with open(os.path.join(os.getcwd(), 'videoGamePrices.txt'), 'a') as f:
+            f.write(f"Humble Bundle: No results found for '{gameEntry}'\n")
         return "No results found", "Game may be unavailable on this platform"
 
 def checkEpic(gameEntry):
@@ -155,6 +176,8 @@ def checkEpic(gameEntry):
     # use "No results found" text from webpage, avoiding erroneously grabbing other displayed games.
     if noResults:
         print("No results found! (avoided grabbing other recommended games)")
+        with open(os.path.join(os.getcwd(), 'videoGamePrices.txt'), 'a') as f:
+            f.write(f"Epic Games Store: No results found for '{gameEntry}'\n")
         return "No results found", "Game may be unavailable on this platform"
     if results:
         # div container that holds the game title
@@ -171,10 +194,14 @@ def checkEpic(gameEntry):
                 if resultPrice:
                     price = resultPrice.get_text(strip=True)
                     print(f"Price: {price}")
+                    with open(os.path.join(os.getcwd(), 'videoGamePrices.txt'), 'a') as f:
+                        f.write(f"Epic Games Store: {title} -- {price}\n")
                     return title, price
 
             else:
                 ("Exact match not found!")
+                with open(os.path.join(os.getcwd(), 'videoGamePrices.txt'), 'a') as f:
+                    f.write(f"Epic Games Store: No EXACT match for '{gameEntry}'\n")
                 # exact match wasn't found for game, but user can still view search results when pressing button
                 return "Exact match not found", "Click Epic Games Store Link to view all results"
     # not necessary?        
@@ -189,6 +216,8 @@ def processGame(gameEntry):
     gmgTitle, gmgPrice = checkGMG(gameEntry)
     hbTitle, hbPrice = checkHumbleBundle(gameEntry)
     epicTitle, epicPrice = checkEpic(gameEntry)
+    with open(os.path.join(os.getcwd(), 'videoGamePrices.txt'), 'a') as f:
+        f.write("\n---\n")
     return steamTitle, steamPrice, gmgTitle, gmgPrice, hbTitle, hbPrice, epicTitle, epicPrice
 
 
@@ -305,6 +334,11 @@ def createGui():
 
 # beginning of program. starts gui window        
 if __name__ == '__main__':
+    currentDate = date.today()
+    # file is written to in every checkX() function. It will be stored in the same directory as this script.
+    with open(os.path.join(os.getcwd(), 'videoGamePrices.txt'), 'a') as f:
+        f.write(f"-----------------\nPC game prices - {currentDate}:\n-----------------\n")
+              
     createGui()
 
 
