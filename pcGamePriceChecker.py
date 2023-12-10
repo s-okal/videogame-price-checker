@@ -217,7 +217,7 @@ def processGame(gameEntry):
     hbTitle, hbPrice = checkHumbleBundle(gameEntry)
     epicTitle, epicPrice = checkEpic(gameEntry)
     with open(os.path.join(os.getcwd(), 'videoGamePrices.txt'), 'a') as f:
-        f.write("\n---\n")
+        f.write("---\n")
     return steamTitle, steamPrice, gmgTitle, gmgPrice, hbTitle, hbPrice, epicTitle, epicPrice
 
 
@@ -336,8 +336,12 @@ def createGui():
 if __name__ == '__main__':
     currentDate = date.today()
     # file is written to in every checkX() function. It will be stored in the same directory as this script.
-    with open(os.path.join(os.getcwd(), 'videoGamePrices.txt'), 'a') as f:
-        f.write(f"-----------------\nPC game prices - {currentDate}:\n-----------------\n")
+    try:
+        with open(os.path.join(os.getcwd(), 'videoGamePrices.txt'), 'a') as f:
+            f.write(f"-----------------\nPC game prices - {currentDate}:\n-----------------\n")
+    except IOError:
+        "File was not opened correctly."
+        pass
               
     createGui()
 
