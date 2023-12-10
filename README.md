@@ -2,6 +2,7 @@
 
 This program uses Python web scraping to find the best deal for PC video games. It searches four popular storefronts, including Steam, Green Man Gaming, Humble Bundle, and the Epic Games Store. The program will produce the output in a GUI and provide links to each storefront when a game is found.
 
+
 ## Dependencies 
 
 NOTE: This program has only been tested with Python 3.11. Use other versions at your own risk.
@@ -22,6 +23,9 @@ Selenium allows Python to control the web browser.
 
 BeautifulSoup is used to gather content from HTML elements on each webpage.
 
+## Running the program
+
+To run the program, use your command line to navigate to the folder where you have pcGamePriceChecker.py stored. Once in the program's directory, use the command ```python pcGamePriceChecker.py``` to launch the program. This will open the program's GUI. As you perform searches with the program, you can view debug information as it is outputted to the command line. The output file containing the search data will be saved to this directory.
 
 ## Current limitations
 
