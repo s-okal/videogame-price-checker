@@ -8,7 +8,10 @@ import re
 import os
 from datetime import date
 import tkinter as tk
+from tkinter import ttk
 
+# dictionary to be used for storing button links after lookups are completed
+platformButtons = {}
 
 def checkSteam(gameEntry): 
     # browser.get('https://store.steampowered.com')
@@ -277,6 +280,38 @@ def createGui():
         gmgLabel.config(text=f"Green Man Gaming: {gmgTitle} -- {gmgPrice}")
         hbLabel.config(text=f"Humble Bundle: {hbTitle} -- {hbPrice}")
         epicLable.config(text=f"Epic Games Store: {epicTitle} -- {epicPrice}")
+
+        # create/update the button only if a game was captured
+        if steamTitle == "No results found":
+            deleteButton("Steam")
+        else:
+            buttonUpdate("Steam", f"https://store.steampowered.com/search/?term={steamTitle}")
+
+
+
+        # if steamTitle != "No results found":
+        #     steamButton = ttk.Button(root, text="Steam Link", command=lambda: openLink(f"https://store.steampowered.com/search/?term={steamTitle}"))
+        #     steamButton.pack()
+
+    # add a link button to the page if it doesn't exist, OR update a link if another game was searched for
+    def buttonUpdate(platform, link):
+        if platform in platformButtons:
+            platformButtons[platform].config(command=lambda: openLink(link))
+        else:
+            newButton = ttk.Button(root, text=f"{platform} Link", command=lambda l=link: openLink(l))
+            newButton.pack()
+            platformButtons[platform] = newButton
+
+    # if a button exists from a prior search, and a new search returns no results, delete the platform button from the gui
+    def deleteButton(platform):
+        if platform in platformButtons:
+            platformButtons[platform].destroy()
+            del platformButtons[platform]
+        
+
+    def openLink(link):
+        import webbrowser
+        webbrowser.open_new(link)
 
 
     label = tk.Label(root, text="Enter a PC game you'd like to check the price for: ")
