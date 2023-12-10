@@ -5,7 +5,6 @@ import time
 import requests
 from bs4 import BeautifulSoup
 import re
-import os
 from datetime import date
 import tkinter as tk
 from tkinter import ttk
@@ -39,9 +38,11 @@ def checkSteam(gameEntry):
 
 
     if first_result:
+        # find these elements on webpage
         resultTitle = first_result.find(class_="title")
         resultPrice = first_result.find(class_="discount_final_price")
         if resultTitle:
+            # grab text from elements on webpage
             title = resultTitle.get_text(strip=True)
             print(f"Title: {title}")
             if resultPrice:
@@ -79,62 +80,32 @@ def checkGMG(gameEntry):
 
     if resultTitle:
         title = resultTitle.get_text(strip=True)
-        # Use '0' games found to notify of no search results
+        # Use '0' games found to determine if there are no search results
         if notFound == '0':
             print("No games found -- zero results returned")
             return "No results found", "Game may be unavailable on this platform"
         # avoids search results that are returned that are irrelevant, like 'forza'
-        # another example: 'shit a'
         # TODO: unintended side-effect: if user looks up 'grand theft auto 5', 'grand theft auto v' does not appear. Exclude roman numerals?
         elif gameEntry.lower() not in title.lower():
             print("Not found -- discarded erroneous results")
-            return "Not found", "No exact matches found"
+            return "Not results found", "Game may be unavailable on this platform"
         else:
             print(f"Title: {title}")
             if resultPrice:
                 price = resultPrice.get_text(strip=True)
                 print(f"Price: {price}")
                 return title, price
+            # might not be necessary
             else:
                 print("No results found.")
 
-# NOT WORKING AND CURRENTLY NOT IMPLEMENTED
-def checkG2A(gameEntry):
-    print("----- G2A -----")
 
-    # website will replace space char with %20
-    gameEntry.replace(" ", "%20")
-    # url will apply filters for PC games specifically
-    url = (f"https://www.g2a.com/category/games-c189?f%5Bdevice%5D%5B0%5D=1118&query={gameEntry}")
-
-    browser = webdriver.Chrome()
-    browser.get(url)
-    browser.minimize_window()
-    soup = BeautifulSoup(browser.page_source, "html.parser")
-    time.sleep(5)
-    browser.close()
-
-    resultTitle = soup.find(class_="Card__title")
-    resultPrice = soup.find(class_="Card__price-cost")
-
-    if resultTitle and resultPrice:
-        title = resultTitle.get_text(strip=True)
-        price = resultPrice.get_text(strip=True)
-        print(f"Title {title}")
-        print(f"Price: {price}")
-    else:
-        print("No search results found!")
-
-
-# TODO: Works in CLI mode, need to update with GUI functionality
 def checkHumbleBundle(gameEntry):
 
     print("\n----- Humble Bundle -----")
 
     gameEntry.replace(" ", "%20")
     url = (f"https://www.humblebundle.com/store/search?sort=bestselling&search={gameEntry}&page=1&platform=windows")
-    # url = "https://www.humblebundle.com/store/search?search=poop"
-
 
     browser = webdriver.Chrome()
     browser.get(url)
@@ -152,7 +123,11 @@ def checkHumbleBundle(gameEntry):
     if resultTitle:
         title = resultTitle.get_text(strip=True)
         print(f"Title: {title}")
-        if resultPrice:
+        # avoids erroneous search results. Ensures searched game is within the title of the matched game
+        if gameEntry.lower() not in title.lower():
+            print("No results-- exact match not detected")
+            return "No results found", "Game may be unavailable on this platform"
+        elif resultPrice:
             price = resultPrice.get_text(strip=True)
             print(f"Price: {price}")
             return title, price
@@ -160,58 +135,10 @@ def checkHumbleBundle(gameEntry):
         print("No results found!")
         return "No results found", "Game may be unavailable on this platform"
 
-# TODO: Made largely redundant with checkEpicAccurate() function. will likely be phased out.
 def checkEpic(gameEntry):
     print("----- Epic Games Store -----")
     gameEntry.replace(" ", "%20")
     url = (f"https://store.epicgames.com/en-US/browse?q={gameEntry}&sortBy=relevancy&sortDir=DESC&count=40")
-
-    
-    browser = webdriver.Chrome()
-    browser.get(url)
-    browser.minimize_window()
-    time.sleep(5)
-    soup = BeautifulSoup(browser.page_source, "html.parser")
-    time.sleep(5)
-    browser.close()
-
-    # grabbing the div "container" that holds the game title and price information
-    results = soup.find('div', class_="css-hkjq8i")
-    
-
-    if results:
-        # div container that holds the game title
-        resultTitle = results.find('div', class_="css-rgqwpc")
-        # span tag that holds the game price. If this was used without the results variable, other css-formatted text would be grabbed
-        resultPrice = results.find('span', class_="css-119zqif")
-        if resultTitle:
-            title = resultTitle.get_text(strip=True)
-            print(f"Title: {title}")
-            if resultPrice:
-                price = resultPrice.get_text(strip=True)
-                print(f"Price: {price}")
-                return title, price
-            else:
-                # no price info. game might be announed but not yet released
-                price = "Price coming soon"
-                return title, price
-    else:
-        print("No results found!")
-        title = "No results found"
-        price = "Game might not be available on this store."
-        return title, price
-
-
-# TODO: handle roman numerals if present. 
-def checkEpicAccurate(gameEntry):
-    print("----- Epic Games Store ACCURATE -----")
-    gameEntry.replace(" ", "%20")
-    url = (f"https://store.epicgames.com/en-US/browse?q={gameEntry}&sortBy=relevancy&sortDir=DESC&count=40")
-
-    # Split user-entered title into split strings - UNIMPLEMENTED..possibly use to convert into roman numerals?
-    titleWords = gameEntry.lower().split()
-    excludedWords = ['the', 'of']
-
     
     browser = webdriver.Chrome()
     browser.get(url)
@@ -236,7 +163,7 @@ def checkEpicAccurate(gameEntry):
         resultPrice = results.find('span', class_="css-119zqif")
         if resultTitle:
             title = resultTitle.get_text(strip=True)
-            # Any special characters will be replaced with a blank string
+            # Any special characters will be replaced with a blank string. Following two lines unused but I left them in for use in future updates
             title = re.sub(r'[^a-zA-Z0-9\s]', '', title)
             titleSplit = title.lower().split()
             if gameEntry.lower() == title.lower():
@@ -248,18 +175,20 @@ def checkEpicAccurate(gameEntry):
 
             else:
                 ("Exact match not found!")
-                # change this returned value, but what exactly would trigger this condition?
-                return "Game not found", "Couldn't find exact title match"
-            
+                # exact match wasn't found for game, but user can still view search results when pressing button
+                return "Exact match not found", "Click Epic Games Store Link to view all results"
+    # not necessary?        
     else:
         print("No results found!")
+
+# BEGINNING OF GUI-RELATED FUNCTIONS
 
 # calls check function and returns the values to the GUI function
 def processGame(gameEntry):
     steamTitle, steamPrice = checkSteam(gameEntry)
     gmgTitle, gmgPrice = checkGMG(gameEntry)
     hbTitle, hbPrice = checkHumbleBundle(gameEntry)
-    epicTitle, epicPrice = checkEpicAccurate(gameEntry)
+    epicTitle, epicPrice = checkEpic(gameEntry)
     return steamTitle, steamPrice, gmgTitle, gmgPrice, hbTitle, hbPrice, epicTitle, epicPrice
 
 
@@ -272,7 +201,6 @@ def createGui():
     def triggerProcessGame():
         # grab user entry
         gameEntry = entry.get()
-        # 
         steamTitle, steamPrice, gmgTitle, gmgPrice, hbTitle, hbPrice, epicTitle, epicPrice = processGame(gameEntry)
         
         # Update the labels when the values are returned from each function
@@ -281,38 +209,72 @@ def createGui():
         hbLabel.config(text=f"Humble Bundle: {hbTitle} -- {hbPrice}")
         epicLable.config(text=f"Epic Games Store: {epicTitle} -- {epicPrice}")
 
-        # create/update the button only if a game was captured
-        if steamTitle == "No results found":
-            deleteButton("Steam")
-        else:
-            buttonUpdate("Steam", f"https://store.steampowered.com/search/?term={steamTitle}")
+        # Assigns text to the button and provides the search link. Title is sent because it may contain "No results found" text meant for buttonUpdate function
+        buttonUpdate("Steam", steamTitle, f"https://store.steampowered.com/search/?term={steamTitle}")
+        buttonUpdate("Green Man Gaming", gmgTitle, f"https://www.greenmangaming.com/search?query={gameEntry}&platform=PC")
+        buttonUpdate("Humble Bundle", hbTitle, f"https://www.humblebundle.com/store/search?sort=bestselling&search={gameEntry}&page=1&platform=windows")
+        buttonUpdate("Epic Games Store", epicTitle, f"https://store.epicgames.com/en-US/browse?q={gameEntry}&sortBy=relevancy&sortDir=DESC&count=40")       
 
-
-
-        # if steamTitle != "No results found":
-        #     steamButton = ttk.Button(root, text="Steam Link", command=lambda: openLink(f"https://store.steampowered.com/search/?term={steamTitle}"))
-        #     steamButton.pack()
-
-    # add a link button to the page if it doesn't exist, OR update a link if another game was searched for
-    def buttonUpdate(platform, link):
-        if platform in platformButtons:
+    # add a link button to the page if the button doesn't exist, OR updates the link if another game was previously assigned
+    def buttonUpdate(platform, title, link):
+        # calls deleteButton function which will remove it from the page if no results were found
+        if title == "No results found":
+            deleteButton(platform)
+        # if the button exists already and the new search found a game, update the link
+        elif platform in platformButtons:
             platformButtons[platform].config(command=lambda: openLink(link))
+        # create a new button 
         else:
-            newButton = ttk.Button(root, text=f"{platform} Link", command=lambda l=link: openLink(l))
-            newButton.pack()
-            platformButtons[platform] = newButton
+            if platform not in platformButtons:
+                new_button = ttk.Button(root, text=f"{platform} Link", command=lambda l=link: openLink(l))
+                new_button.pack()
+                platformButtons[platform] = new_button
+        
 
     # if a button exists from a prior search, and a new search returns no results, delete the platform button from the gui
+    # called from buttonUpdate()
     def deleteButton(platform):
         if platform in platformButtons:
             platformButtons[platform].destroy()
             del platformButtons[platform]
         
-
+    # opens the link when a button is clicked
     def openLink(link):
         import webbrowser
         webbrowser.open_new(link)
 
+    def openReadMe():
+        readMeWindow = tk.Toplevel(root)
+        readMeWindow.title("ReadMe - Background Information")
+        text = "This program will search four PC videogame storefronts to help you find the best price for a game.\n"
+        text2 = """IMPORTANT INFO BELOW:\n
+                1. This Python script REQUIRES that you have Selenium, BeautifulSoup, and the Chrome webdriver installed.
+                It has only been tested with Python 3.11.\n
+                2. Type the title of the game you want to search for as close to its original title format as possible! The search
+                function on each website behaves differently and this program simply retrieves the first store result.
+                For instance, searching for 'grand theft auto 5' instead of 'grand theft auto v' may not work as intended. Abbreviations typically
+                won't work either (don't type 'rdr2' when looking for 'read dead redemption 2')\n
+                3. The program may take some time after hitting the 'Search' button to gather the price from each website. Your
+                computer may state the program is 'Not reponding'... please disregard this message and wait up to ONE MINUTE for results
+                to be returned.\n"""
+        text3 = """ADDITIONAL INFO:\n\nAlthough Steam can be scraped in 'headless' mode (without opening a browser window), the other sites have either JavaScript
+                elements OR anti-scraping measures in place that force the use of an open browser window. The browser is set to minimize automatically
+                for these sites. They will remain open for around 10-12 seconds each, as some JavaScript elements take time to load onto the screen. Please be patient!\n
+                Some good examples to test this application are 'red dead redemption 2', 'doom', 'modern warfare 3',
+                or some garbage text 'aisdfiafadfafd'\n
+                """
+        label1 = tk.Label(readMeWindow, text=text)
+        label2 = tk.Label(readMeWindow, text=text2)
+        label3 = tk.Label(readMeWindow, text=text3)
+        label1.pack()
+        label2.pack()
+        label3.pack()
+        
+
+
+    # informational button at top of window
+    readmeButton = tk.Button(root, text="READ ME", command=openReadMe)
+    readmeButton.pack()
 
     label = tk.Label(root, text="Enter a PC game you'd like to check the price for: ")
     label.pack()
@@ -320,7 +282,7 @@ def createGui():
     entry = tk.Entry(root)
     entry.pack()
 
-    button = tk.Button(root, text="Check Price", command=triggerProcessGame)
+    button = tk.Button(root, text="Search", command=triggerProcessGame)
     button.pack()
 
     steamLabel = tk.Label(root, text="Steam: ", fg="blue")
@@ -335,12 +297,16 @@ def createGui():
     epicLable = tk.Label(root, text="Epic Games: ")
     epicLable.pack()
 
+    
+
     root.mainloop()
 
 
-# beginnin of program. starts gui window        
+
+# beginning of program. starts gui window        
 if __name__ == '__main__':
     createGui()
+
 
 
 # USED ONLY for command line version of program.
@@ -349,9 +315,9 @@ if __name__ == '__main__':
 # checkGMG(gameEntry)
 # checkHumbleBundle(gameEntry)
 # checkEpic(gameEntry)
-# checkEpicAccurate(gameEntry)
-# checkG2A(gameEntry)
 
+
+# FUTURE FUNCTIONALITY??
 # TODO: After the search is complete, make buttons appear for each game found that links to the 'search' page they were found on (just return url variable)
 
 # TODO: Functionality to split user entered string into separate strings in order to capture every word in game title.
@@ -363,29 +329,3 @@ if __name__ == '__main__':
 # TODO: track historic price data in a shelve ??
 
 # TODO: Since Steam is the most popular store platform, only allow games that match the Steam name??
-
-
-# HEADLESS UNIT TEST OPERATION -- probably won't work on everything due to JS and anti-webscraping : 
-# https://www.zenrows.com/blog/headless-browser-python#switch-to-python-selenium-headless-mode
-# https://www.selenium.dev/blog/2023/headless-is-going-away/
-# 
-# import unittest
-# from selenium import webdriver
-
-# class GoogleTestCase(unittest.TestCase):
-
-#     def setUp(self):
-#         options = webdriver.ChromeOptions()
-#         options.add_argument("--headless=new")
-#         self.driver = webdriver.Chrome(options=options)
-        
-        
-
-#     def test_page_title(self):
-#         self.driver.get('https://store.steampowered.com')
-#         self.assertIn('Welcome to Steam', self.driver.title)
-
-# if __name__ == '__main__':
-#     unittest.main(verbosity=2)
-
-# https://stackoverflow.com/questions/71418546/beautiful-soup-not-working-on-this-website
