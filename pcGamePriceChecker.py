@@ -277,7 +277,7 @@ def createGui():
         readMeWindow.title("ReadMe - Background Information")
         text = "This program will search four PC videogame storefronts to help you find the best price for a game.\n"
         text2 = """IMPORTANT INFO BELOW:\n
-                1. This Python script REQUIRES that you have Selenium, BeautifulSoup, and the Chrome webdriver installed.
+                1. This Python script REQUIRES that you have Requests, Selenium, BeautifulSoup, and the Chrome webdriver installed.
                 It has only been tested with Python 3.11.\n
                 2. Type the title of the game you want to search for as close to its original title format as possible! The search
                 function on each website behaves differently and this program simply retrieves the first store result.
